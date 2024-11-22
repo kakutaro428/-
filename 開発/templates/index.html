@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アニメリスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        input, button { margin: 5px; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 10px 0; }
+        .delete-btn { margin-left: 10px; color: red; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>見たアニメを記録するアプリ</h1>
+    <form id="anime-form">
+        <input type="text" id="title" placeholder="アニメタイトル" required>
+        <input type="text" id="genre" placeholder="ジャンル" required>
+        <button type="submit">追加</button>
+    </form>
+
+    <h2>アニメリスト</h2>
+    <ul id="anime-list"></ul>
+
+    <script>
+        const animeForm = document.getElementById('anime-form');
+        const animeList = document.getElementById('anime-list');
+
+        // フォーム送信時に新しいアニメを追加
+        animeForm.onsubmit = async (event) => {
+            event.preventDefault();
+
+            const title = document.getElementById('title').value;
+            const genre = document.getElementById('genre').value;
+
+            const response = await fetch('/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, genre })
+            });
+
+            if (response.ok) {
+                const newAnime = await response.json();
+                appendAnime(newAnime);
+                // 入力フィールドをクリア
+                document.getElementById('title').value = '';
+                document.getElementById('genre').value = '';
+            } else {
+                const error = await response.json();
+                alert(`エラー: ${error.error}`);
+            }
+        };
+
+        // サーバーからアニメリストを取得して表示
+        const loadAnimeList = async () => {
+            const response = await fetch('/anime');
+            const data = await response.json();
+            data.forEach(anime => appendAnime(anime));
+        };
+
+        // アニメリストに項目を追加
+        const appendAnime = (anime) => {
+            const li = document.createElement('li');
+            li.textContent = `${anime.title} (${anime.genre})`;
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '削除';
+            deleteBtn.classList.add('delete-btn');
+            deleteBtn.onclick = () => deleteAnime(anime.title, li);
+
+            li.appendChild(deleteBtn);
+            animeList.appendChild(li);
+        };
+
+        // アニメを削除
+        const deleteAnime = async (title, listItem) => {
+            const response = await fetch('/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title })
+            });
+
+            if (response.ok) {
+                listItem.remove(); // DOMから削除
+                alert(`「${title}」を削除しました`);
+            } else {
+                const error = await response.json();
+                alert(`エラー: ${error.error}`);
+            }
+        };
+
+        // 初回ロード時にアニメリストを取得
+        loadAnimeList();
+    </script>
+</body>
+</html>
